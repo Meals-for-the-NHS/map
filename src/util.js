@@ -7,7 +7,7 @@ export function extractPosition(p) {
 
 export function endPoint(p) {
   if (production) {
-    return `http://m4nhs.fezz.in:3000/${p}`
+    return `https://europe-west2-meals4nhs.cloudfunctions.net/api/${p}`
   }
   return `http://localhost:5001/meals4nhs/europe-west2/api/${p}`
 }

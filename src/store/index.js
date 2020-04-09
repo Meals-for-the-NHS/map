@@ -22,7 +22,7 @@ export default new Vuex.Store({
             json.forEach(r => {
               const { Status } = r
               if (!Status) {
-                r.Status = 'None'
+                r.Status = 'Not started'
               }
               state.providers[r.record_id] = r
             })
@@ -35,9 +35,7 @@ export default new Vuex.Store({
             json.forEach(r => {
               let { Status } = r
               if (Status) {
-                if (Status === 'Not started' && r['Priority Target']) {
-                  Status = `${Status} (${r['Priority Target']})`
-                } else if (Status.match(/receiving/i)) {
+                if (Status.match(/receiving/i)) {
                   Status = 'Receiving'
                 }
                 state.hospitals[r.record_id] = Object.assign({}, r, { Status })

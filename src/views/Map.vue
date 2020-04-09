@@ -16,8 +16,8 @@
     <div class="selection">
       <h2>Hospitals</h2>
       <ul>
-        <li v-for="(value, filter) in hospitalFilters" :key="`hs-${filter}`">
-          <input type="checkbox" :checked="value"
+        <li v-for="filter in hospitalFilterList" :key="`hs-${filter}`">
+          <input type="checkbox" :checked="hospitalFilters[filter]"
                  @change="changeHospitalFilter(filter, $event.target.checked)">
           <svg width="20px" height="20px">
             <g transform="scale(3) translate(3, 3) ">
@@ -29,8 +29,8 @@
       </ul>
       <h2>Providers</h2>
       <ul>
-        <li v-for="(value, filter) in providerFilters" :key="`pr-${filter}`">
-          <input type="checkbox" :checked="value"
+        <li v-for="filter in providerFilterList" :key="`pr-${filter}`">
+          <input type="checkbox" :checked="providerFilters[filter]"
                  @change="changeProviderFilter(filter, $event.target.checked)">
          <div class="circle" :style="{ background: colours[filter]}"></div>
           {{ filter }}
@@ -44,7 +44,7 @@
       <div v-if="type === 'hospital'" class="place-info">
         <h2>{{ currentPlace['Hospital Name'] }}</h2>
         <h3>{{ currentPlace['City'] }}</h3>
-        <h4>{{ currentPlace['Region'] }}</h4>
+        <h4>{{ currentPlace['Local Authority'] }}</h4>
         <p>{{ currentPlace['Status'] }}</p>
       </div>
       <div v-else-if="type === 'provider'" class="place-info">
@@ -99,41 +99,37 @@ export default {
           ]
         }
       },
-      closestProviders: [],
-      hospitalFilter: '',
-      hospitalFilterReceiving: false,
       providerTableKeys: [
         'Status', 'Location', 'Restaurant City', 'Meal number'
       ],
       hospitalFilters: {},
       providerFilters: {},
       colours: {
-        'Not started': '#ff7cac',
-        'Not started (priority to contact)': '#ffe54c',
-        Receiving: '#7fff4c',
-        Contacted: '#4caa92',
-        'Waiting for first order': '#4cb2ff',
-        None: '#7f4cff',
+        'Not started': '#7963bf',
+        Receiving: '#22b346',
+        Contacted: '#1286c9',
+        'Waiting for first order': '#19a68a',
         Delivering: '#ff4ce5',
-        Onboarded: '#4488aa'
-      }
+        Onboarded: '#4488aa',
+        'Priority to respond to': '#ffe554',
+        'Priority for outreach': '#e075d2',
+        'Waitlist for response': '#f29366'
+      },
+      // this is so gross, by Maia wants this order and it's arbitrary
+      hospitalFilterList: [
+        'Receiving', 'Waiting for first order', 'Contacted',
+        'Priority to respond to', 'Priority for outreach', 'Waitlist for response',
+        'Not started'
+      ],
+      providerFilterList: [
+        'Delivering', 'Onboarded', 'Not started'
+      ]
     }
   },
   watch: {
     google(g) {
       if (g && !this.loaded) {
         this.load()
-      }
-    },
-    pid() {
-      this.grabClosest()
-      if (this.moveMap && this.type === 'hospital') {
-        this.$refs.map.panTo(this.currentPlace.pos)
-      }
-    },
-    currentPlace() {
-      if (this.currentPlace) {
-        this.grabClosest()
       }
     },
     hospitals() {
@@ -152,20 +148,22 @@ export default {
     google: gmapApi,
     providerIcon() {
       return {
-        path: this.google.maps.SymbolPath.CIRCLE, // 'M-1,-1 1,-1 1,1 -1,1Z',
+        path: this.google.maps.SymbolPath.CIRCLE, // 'M-1,-1 1,-1 1,1 -1,1Z', //
         fillColor: '#0af',
         fillOpacity: 1,
         scale: 5,
-        strokeColor: '#888',
-        strokeWeight: 0.5
+        strokeColor: '#fff',
+        strokeWeight: 1.5
       }
     },
     hostpitalIcon() {
-      const icon = Object.assign({}, this.providerIcon)
-      icon.path = 'M-3,-3 -1,-3 -1,-1 1,-1 1,-3 3,-3 3,3 1,3 1,1 -1,1 -1,3 -3,3Z'
-      icon.fillColor = '#f0a'
-      icon.scale = 3
-      return icon
+      return {
+        path: 'M-3,-3 -1,-3 -1,-1 1,-1 1,-3 3,-3 3,3 1,3 1,1 -1,1 -1,3 -3,3Z',
+        scale: 3,
+        fillOpacity: 1,
+        strokeColor: '#888',
+        strokeWeight: 0.5
+      }
     },
     filteredHospitals() {
       if (this.hospitals) {
@@ -201,11 +199,7 @@ export default {
         const statusSet = new Set()
         Object.values(things).forEach((t) => {
           if (t.Status) {
-            let status = t.Status
-            if (t.Status === 'Not started' && t['Priority Target']) {
-              status = `${status} (${t['Priority Target']})`
-            }
-            statusSet.add(status)
+            statusSet.add(t.Status)
           }
         })
         const output = {}
@@ -267,7 +261,7 @@ export default {
         width: 13px;
         border-radius: 13px;
         background: #f00;
-        border: 1px solid #888;
+        //border: 1px solid #fff;
       }
       .circle, svg {
         margin: 0 5px;
