@@ -13,7 +13,10 @@
                  @click="selectHospital(hospital.record_id)" />
   </gmap-map>
   <div class="sidebar">
-    <div class="selection">
+    <div v-if="!hospitals && !providers">
+      <p>Loading...</p>
+    </div>
+    <div v-else class="selection">
       <h2>Hospitals</h2>
       <ul>
         <li v-for="filter in hospitalFilterList" :key="`hs-${filter}`">
@@ -109,7 +112,7 @@ export default {
         Receiving: '#22b346',
         Contacted: '#1286c9',
         'Waiting for first order': '#19a68a',
-        Delivering: '#ff4ce5',
+        Delivering: '#22b346',
         Onboarded: '#4488aa',
         'Priority to respond to': '#ffe554',
         'Priority for outreach': '#e075d2',
