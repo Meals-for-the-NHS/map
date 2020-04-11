@@ -169,7 +169,7 @@ export default {
       })))
     },
     filteredList() {
-      if (this.searchTerm.length >= 3) {
+      if (this.searchTerm.length >= 2) {
         const re = new RegExp(this.searchTerm, 'i')
         return this.allPlaces.filter(p => p.name && p.name.match(re))
       }
@@ -260,6 +260,8 @@ export default {
     }
 
     .search-results {
+      height: 45vh;
+      overflow-y: scroll;
       ul {
         list-style: none;
         margin: 5px;
