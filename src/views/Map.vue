@@ -1,17 +1,9 @@
 <template lang="html">
 <div class="locations">
-  <gmap-map class="map" ref="map" :center="map.center"
-            :zoom="map.zoom" :options="map.options">
-    <gmap-marker v-for="provider in filteredProviders" :key="provider.record_id"
-                 :position="provider.coordinates"
-                 :icon="currentPlace && provider.record_id === currentPlace.id ? currentIcon : Object.assign({}, providerIcon, { fillColor: colours[provider.Status] })"
-                 @click="selectProvider(provider.record_id)" />
-
-    <gmap-marker v-for="hospital in filteredHospitals" :key="hospital.record_id"
-                 :position="hospital.coordinates"
-                 :icon="currentPlace && hospital.record_id === currentPlace.record_id ? currentIcon : Object.assign({}, hospitalIcon, { fillColor: colours[hospital.Status] })"
-                 @click="selectHospital(hospital.record_id)" />
-  </gmap-map>
+  <place-map ref="map" :loaded="loaded" :currentPlace="currentPlace"
+       :hospitals="filteredHospitals" :providers="filteredProviders"
+       @load="load" @hospitalClick="selectHospital" @providerClick="selectProvider">
+  </place-map>
   <div class="sidebar">
     <div v-if="!hospitals && !providers">
       <p>Loading...</p>
@@ -24,7 +16,7 @@
                  @change="changeHospitalFilter(filter, $event.target.checked)">
           <svg width="20px" height="20px">
             <g transform="scale(3) translate(3, 3) ">
-              <path :d="hospitalIcon.path" :fill="colours[filter]"/>
+              <path :d="$refs.map.hospitalIcon.path" :fill="$refs.map.colours[filter]"/>
             </g>
           </svg>
           {{ filter }}
@@ -35,7 +27,7 @@
         <li v-for="filter in providerFilterList" :key="`pr-${filter}`">
           <input type="checkbox" :checked="providerFilters[filter]"
                  @change="changeProviderFilter(filter, $event.target.checked)">
-         <div class="circle" :style="{ background: colours[filter]}"></div>
+         <div class="circle" :style="{ background: $refs.map.colours[filter]}"></div>
           {{ filter }}
         </li>
       </ul>
@@ -83,10 +75,13 @@
 </template>
 
 <script>
-import { gmapApi } from 'vue2-google-maps'
 import { mapState, mapActions } from 'vuex'
+import Map from '@/components/Map.vue'
 
 export default {
+  components: {
+    'place-map': Map
+  },
   props: {
     type: {
       type: String,
@@ -104,49 +99,13 @@ export default {
   data() {
     return {
       loaded: false,
-      map: {
-        center: {
-          lat: 53.021722, lng: -2.129872
-        },
-        zoom: 7,
-        options: {
-          disableDefaultUI: true,
-          gestureHandling: 'greedy',
-          styles: [
-            {
-              stylers: [
-                {
-                  saturation: -100
-                }
-              ]
-            },
-            {
-              featureType: 'road',
-              elementType: 'labels',
-              stylers: [
-                { visibility: 'off' }
-              ]
-            }
-          ]
-        }
-      },
       providerTableKeys: [
         'Status', 'Location', 'Restaurant City', 'Meal number', 'Contact owner'
       ],
+      hospitalPath: 'M-3,-3 -1,-3 -1,-1 1,-1 1,-3 3,-3 3,3 1,3 1,1 -1,1 -1,3 -3,3Z',
       hospitalFilters: {},
       providerFilters: {},
-      colours: {
-        'Not started': '#7963bf',
-        Receiving: '#22b346',
-        Contacted: '#1286c9',
-        'Waiting for first order': '#19a68a',
-        Delivering: '#22b346',
-        Onboarded: '#4488aa',
-        'Priority to respond to': '#ffe554',
-        'Priority for outreach': '#e075d2',
-        'Waitlist for response': '#f29366'
-      },
-      // this is so gross, by Maia wants this order and it's arbitrary
+      // this is so gross, but Maia wants this order and it's arbitrary
       hospitalFilterList: [
         'Receiving', 'Waiting for first order', 'Contacted',
         'Priority to respond to', 'Priority for outreach', 'Waitlist for response',
@@ -159,15 +118,9 @@ export default {
     }
   },
   watch: {
-    google(g) {
-      if (g && !this.loaded) {
-        this.load()
-      }
-    },
     pid() {
       if (this.moveMap) {
         this.$refs.map.panTo(this.currentPlace.coordinates)
-        this.map.zoom = 10
       }
     },
     hospitals() {
@@ -183,33 +136,6 @@ export default {
   },
   computed: {
     ...mapState(['hospitals', 'providers']),
-    google: gmapApi,
-    providerIcon() {
-      return {
-        path: this.google.maps.SymbolPath.CIRCLE, // 'M-1,-1 1,-1 1,1 -1,1Z', //
-        fillColor: '#0af',
-        fillOpacity: 1,
-        scale: 5,
-        strokeColor: '#fff',
-        strokeWeight: 1.5
-      }
-    },
-    hospitalIcon() {
-      return {
-        path: 'M-3,-3 -1,-3 -1,-1 1,-1 1,-3 3,-3 3,3 1,3 1,1 -1,1 -1,3 -3,3Z',
-        scale: 3,
-        fillOpacity: 1,
-        strokeColor: '#888',
-        strokeWeight: 0.5
-      }
-    },
-    currentIcon() {
-      const icon = Object.assign({}, this.providerIcon)
-      icon.fillColor = '#fc0'
-      icon.scale = 11
-      icon.strokeWeight = 3
-      return icon
-    },
     filteredHospitals() {
       if (this.hospitals) {
         return Object.values(this.hospitals)
@@ -253,6 +179,7 @@ export default {
   methods: {
     ...mapActions(['load']),
     selectHospital(id) {
+      console.log(id)
       this.$router.push({ name: 'map', params: { type: 'hospital', pid: id } })
     },
     selectProvider(id) {
@@ -282,9 +209,9 @@ export default {
     }
   },
   created() {
-    if (this.google) {
-      this.load()
-    }
+    // if (this.google) {
+    //   this.load()
+    // }
   }
 }
 </script>
