@@ -1,15 +1,15 @@
 <template lang="html">
 <div class="locations">
   <gmap-map class="map" ref="map" :center="map.center"
-  :zoom="map.zoom" :options="map.options">
+            :zoom="map.zoom" :options="map.options">
     <gmap-marker v-for="provider in filteredProviders" :key="provider.record_id"
                  :position="provider.coordinates"
-                 :icon="Object.assign({}, providerIcon, { fillColor: colours[provider.Status] })"
+                 :icon="currentPlace && provider.record_id === currentPlace.id ? currentIcon : Object.assign({}, providerIcon, { fillColor: colours[provider.Status] })"
                  @click="selectProvider(provider.record_id)" />
 
     <gmap-marker v-for="hospital in filteredHospitals" :key="hospital.record_id"
                  :position="hospital.coordinates"
-                 :icon="Object.assign({}, hostpitalIcon, { fillColor: colours[hospital.Status] })"
+                 :icon="currentPlace && hospital.record_id === currentPlace.record_id ? currentIcon : Object.assign({}, hospitalIcon, { fillColor: colours[hospital.Status] })"
                  @click="selectHospital(hospital.record_id)" />
   </gmap-map>
   <div class="sidebar">
@@ -24,7 +24,7 @@
                  @change="changeHospitalFilter(filter, $event.target.checked)">
           <svg width="20px" height="20px">
             <g transform="scale(3) translate(3, 3) ">
-              <path :d="hostpitalIcon.path" :fill="colours[filter]"/>
+              <path :d="hospitalIcon.path" :fill="colours[filter]"/>
             </g>
           </svg>
           {{ filter }}
@@ -63,6 +63,21 @@
         </table>
       </div>
     </div>
+    <div v-else class="search">
+      <input type="text" v-model="searchTerm" placeholder="Find a place"/>
+      <div class="search-results">
+        <ul>
+          <li v-for="place in filteredList" :key="`f-${place.id}`">
+            <router-link :to="{ name: 'map', params: {
+                              type: place.type,
+                              pid: place.id,
+                              moveMap: true } }">
+              {{ place.name }}
+            </router-link>
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 </template>
@@ -98,12 +113,25 @@ export default {
           disableDefaultUI: true,
           gestureHandling: 'greedy',
           styles: [
-            { stylers: [{ saturation: -100 }] }
+            {
+              stylers: [
+                {
+                  saturation: -100
+                }
+              ]
+            },
+            {
+              featureType: 'road',
+              elementType: 'labels',
+              stylers: [
+                { visibility: 'off' }
+              ]
+            }
           ]
         }
       },
       providerTableKeys: [
-        'Status', 'Location', 'Restaurant City', 'Meal number'
+        'Status', 'Location', 'Restaurant City', 'Meal number', 'Contact owner'
       ],
       hospitalFilters: {},
       providerFilters: {},
@@ -126,13 +154,20 @@ export default {
       ],
       providerFilterList: [
         'Delivering', 'Onboarded', 'Not started'
-      ]
+      ],
+      searchTerm: ''
     }
   },
   watch: {
     google(g) {
       if (g && !this.loaded) {
         this.load()
+      }
+    },
+    pid() {
+      if (this.moveMap) {
+        this.$refs.map.panTo(this.currentPlace.coordinates)
+        this.map.zoom = 10
       }
     },
     hospitals() {
@@ -159,7 +194,7 @@ export default {
         strokeWeight: 1.5
       }
     },
-    hostpitalIcon() {
+    hospitalIcon() {
       return {
         path: 'M-3,-3 -1,-3 -1,-1 1,-1 1,-3 3,-3 3,3 1,3 1,1 -1,1 -1,3 -3,3Z',
         scale: 3,
@@ -167,6 +202,13 @@ export default {
         strokeColor: '#888',
         strokeWeight: 0.5
       }
+    },
+    currentIcon() {
+      const icon = Object.assign({}, this.providerIcon)
+      icon.fillColor = '#fc0'
+      icon.scale = 11
+      icon.strokeWeight = 3
+      return icon
     },
     filteredHospitals() {
       if (this.hospitals) {
@@ -187,6 +229,25 @@ export default {
         return this[`${this.type}s`][this.pid]
       }
       return null
+    },
+    allPlaces() {
+      const output = Object.entries(this.hospitals).map(([id, h]) => ({
+        id,
+        type: 'hospital',
+        name: h['Hospital Name']
+      }))
+      return output.concat(Object.entries(this.providers).map(([id, p]) => ({
+        id,
+        type: 'provider',
+        name: p['Restaurant Name']
+      })))
+    },
+    filteredList() {
+      if (this.searchTerm.length >= 3) {
+        const re = new RegExp(this.searchTerm, 'i')
+        return this.allPlaces.filter(p => p.name && p.name.match(re))
+      }
+      return []
     }
   },
   methods: {
@@ -268,6 +329,22 @@ export default {
       }
       .circle, svg {
         margin: 0 5px;
+      }
+    }
+
+    .search-results {
+      ul {
+        list-style: none;
+        margin: 5px;
+        padding-inline-start: 0;
+        li {
+          margin-bottom: 8px;
+          a {
+            text-decoration: none;
+            font-weight: bold;
+            color: #111;
+          }
+        }
       }
     }
 
